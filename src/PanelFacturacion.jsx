@@ -17,7 +17,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBSPOaw1y70xDxtvismCdNR-7i_CbgHG50",
   authDomain: "formatos-60a3d.firebaseapp.com",
   projectId: "formatos-60a3d",
-  storageBucket: "formatos-60a3d.firebasestorage.app",
+  storageBucket: "formatos-60a3d.appspot.com",
   messagingSenderId: "923203404268",
   appId: "1:923203404268:web:a8224ee258c996a16680c9"
 };
@@ -26,7 +26,17 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 export default function PanelFacturacion() {
-  const [formFactura, setFormFactura] = useState({ cliente: "", valor: "", observacion: "" });
+  const [formFactura, setFormFactura] = useState({
+    cliente: "",
+    cedula: "",
+    concepto: "",
+    valor: "",
+    banco: "",
+    cuenta: "",
+    tipoCuenta: "",
+    titular: ""
+  });
+
   const [formServicio, setFormServicio] = useState({
     fecha: "", nombre: "", telefono: "", direccion: "", ciudad: "",
     articulo: "", marca: "", modelo: "", serie: "", color: "",
@@ -51,7 +61,7 @@ export default function PanelFacturacion() {
       timestamp: Timestamp.now()
     };
     await addDoc(collection(db, "registros"), nueva);
-    setFormFactura({ cliente: "", valor: "", observacion: "" });
+    setFormFactura({ cliente: "", cedula: "", concepto: "", valor: "", banco: "", cuenta: "", tipoCuenta: "", titular: "" });
     setConsecutivoFactura((prev) => prev + 1);
     obtenerRegistros();
   };
@@ -94,118 +104,46 @@ export default function PanelFacturacion() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-8">
-      {/* Formato Técnico de Servicio */}
-      <div ref={printRef} className="border p-6 bg-white shadow text-sm">
-        <img src="/logo.png" alt="Logo" className="h-20 mb-4" />
-        <h1 className="text-2xl font-bold mb-4">Formato Técnico de Servicio</h1>
-        <p><strong>No:</strong> {consecutivoServicio}</p>
-        <p><strong>Fecha:</strong> {formServicio.fecha}</p>
-        <p><strong>Cliente:</strong> {formServicio.nombre}</p>
-        <p><strong>Teléfono:</strong> {formServicio.telefono}</p>
-        <p><strong>Dirección:</strong> {formServicio.direccion}</p>
-        <p><strong>Ciudad:</strong> {formServicio.ciudad}</p>
-        <p><strong>Artículo:</strong> {formServicio.articulo}</p>
-        <p><strong>Marca:</strong> {formServicio.marca}</p>
-        <p><strong>Modelo:</strong> {formServicio.modelo}</p>
-        <p><strong>Serie:</strong> {formServicio.serie}</p>
-        <p><strong>Color:</strong> {formServicio.color}</p>
-        <p><strong>Estado:</strong> {formServicio.estado}</p>
-        <p><strong>Falla:</strong> {formServicio.falla}</p>
-        <p><strong>Modelo Refrigeración:</strong> {formServicio.modeloRefrig}</p>
-        <p><strong>Tipo Refrigeración:</strong> {formServicio.tpRefrig}</p>
-        <p><strong>Capacidad:</strong> {formServicio.capacidad}</p>
-        <p><strong>Carga:</strong> {formServicio.cgRefrig}</p>
-        <p><strong>Servicios:</strong> {formServicio.mantenimiento ? "Mantenimiento " : ""}{formServicio.reparacion ? "Reparación " : ""}{formServicio.revision ? "Revisión" : ""}</p>
-        <p><strong>Motor:</strong> {formServicio.motor}</p>
-        <p><strong>Amperios:</strong> {formServicio.amperios}</p>
-        <p><strong>Unidad:</strong> {formServicio.unidad}</p>
-        <p><strong>Voltaje:</strong> {formServicio.voltaje}</p>
-        <p><strong>Cotización:</strong> {formServicio.cotizacion ? "Sí" : "No"}</p>
-        <p><strong>Diagnóstico:</strong> {formServicio.diagnostico}</p>
-        <p><strong>Observaciones:</strong> {formServicio.observacion}</p>
-        <p><strong>Valor:</strong> {formServicio.valor}</p>
-        <p><strong>Abono:</strong> {formServicio.abono}</p>
-        <p><strong>Saldo:</strong> {formServicio.saldo}</p>
-        <p className="mt-6">Firma Técnico: _____________________________</p>
-        <p className="mt-2">Firma Cliente: _____________________________</p>
-      </div>
-
-      <div className="space-y-2">
-        {Object.entries(formServicio).map(([campo, valor]) => (
-          typeof valor === "boolean" ? (
-            <label key={campo} className="block">
-              <input
-                type="checkbox"
-                checked={valor}
-                onChange={(e) => setFormServicio({ ...formServicio, [campo]: e.target.checked })}
-              /> {campo}
-            </label>
-          ) : (
-            <input
-              key={campo}
-              placeholder={campo.charAt(0).toUpperCase() + campo.slice(1)}
-              className="w-full border p-2 rounded"
-              value={valor}
-              onChange={(e) => setFormServicio({ ...formServicio, [campo]: e.target.value })}
-            />
-          )
+    <div className="max-w-6xl mx-auto p-4 space-y-10">
+      {/* Formulario Cuenta de Cobro */}
+      <div className="grid grid-cols-2 gap-2">
+        {Object.entries(formFactura).map(([campo, valor]) => (
+          <input
+            key={campo}
+            placeholder={campo.charAt(0).toUpperCase() + campo.slice(1)}
+            className="w-full border p-2 rounded"
+            value={valor}
+            onChange={(e) => setFormFactura({ ...formFactura, [campo]: e.target.value })}
+          />
         ))}
-        <button onClick={guardarServicio} className="bg-blue-500 text-white px-4 py-2 rounded">
-          Guardar Servicio
-        </button>
-        <button onClick={() => exportarPDF(printRef, "servicio", consecutivoServicio)} className="bg-gray-700 text-white px-4 py-2 rounded">
-          Imprimir PDF Servicio
-        </button>
       </div>
-
-      {/* Cuenta de cobro */}
-      <div ref={facturaRef} className="border p-6 bg-white shadow">
-        <img src="/logo.png" alt="Logo" className="h-20 mb-4" />
-        <h2 className="text-2xl font-bold mb-4">Cuenta de Cobro</h2>
+      <div ref={facturaRef} className="p-6 bg-white shadow border">
+        <img src="/logo.png" alt="Logo" style={{ height: "160px", width: "auto", marginBottom: "1rem" }} />
+        <h1 className="text-2xl font-bold mb-4">CUENTA DE COBRO</h1>
+        <p className="mb-1 font-semibold">Héctor Maya</p>
+        <p className="mb-4 font-semibold">C.C. 9.969.799 de Anserma Caldas</p>
         <p><strong>No:</strong> {consecutivoFactura}</p>
+        <p><strong>Fecha:</strong> {new Date().toLocaleDateString()}</p>
+        <br />
         <p><strong>Cliente:</strong> {formFactura.cliente}</p>
-        <p><strong>Valor:</strong> {formFactura.valor}</p>
-        <p><strong>Observación:</strong> {formFactura.observacion}</p>
+        <p><strong>Cédula:</strong> {formFactura.cedula}</p>
+        <p><strong>Concepto:</strong> {formFactura.concepto}</p>
+        <p><strong>Valor:</strong> ${formFactura.valor}</p>
+        <br />
+        <p><strong>Favor realizar el pago a:</strong></p>
+        <p>Banco: {formFactura.banco} | Cuenta: {formFactura.cuenta} ({formFactura.tipoCuenta})</p>
+        <p>Titular: {formFactura.titular}</p>
+        <br />
+        <p className="mt-6">Firma: _____________________________</p>
       </div>
-      <div className="space-y-2">
-        <input
-          placeholder="Cliente"
-          className="w-full border p-2 rounded"
-          value={formFactura.cliente}
-          onChange={(e) => setFormFactura({ ...formFactura, cliente: e.target.value })}
-        />
-        <input
-          placeholder="Valor"
-          className="w-full border p-2 rounded"
-          value={formFactura.valor}
-          onChange={(e) => setFormFactura({ ...formFactura, valor: e.target.value })}
-        />
-        <textarea
-          placeholder="Observación"
-          className="w-full border p-2 rounded"
-          value={formFactura.observacion}
-          onChange={(e) => setFormFactura({ ...formFactura, observacion: e.target.value })}
-        />
-        <button onClick={guardarFactura} className="bg-green-500 text-white px-4 py-2 rounded">
-          Guardar Factura
+      <div className="space-x-2">
+        <button onClick={guardarFactura} className="bg-green-600 text-white px-4 py-2 rounded">
+          Guardar Cuenta de Cobro
         </button>
-        <button onClick={() => exportarPDF(facturaRef, "factura", consecutivoFactura)} className="bg-gray-700 text-white px-4 py-2 rounded">
-          Enviar como PDF
+        <button onClick={() => exportarPDF(facturaRef, "factura", consecutivoFactura)} className="bg-gray-800 text-white px-4 py-2 rounded">
+          Imprimir PDF Cuenta de Cobro
         </button>
       </div>
-
-      <h2 className="font-bold text-xl mt-10">Historial de servicios</h2>
-      {servicios.map((s) => (
-        <div key={s.id} className="border p-2 mt-2 rounded bg-white shadow">
-          <strong>Cliente:</strong> {s.nombre} <br />
-          <strong>Artículo:</strong> {s.articulo} <br />
-          <strong>Diagnóstico:</strong> {s.diagnostico} <br />
-          <strong>Consecutivo:</strong> {s.consecutivo} <br />
-          <strong>Fecha:</strong> {s.timestamp.toDate().toLocaleString()}
-        </div>
-      ))}
     </div>
   );
 }
-
