@@ -1,0 +1,41 @@
+/* App.css */
+
+.contenedor {
+  text-align: center;
+  padding: 2rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.logo {
+  max-height: 120px;
+  object-fit: contain;
+  margin-bottom: 1rem;
+}
+
+.titulo {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.botones {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.boton {
+  padding: 10px 20px;
+  font-size: 1rem;
+  cursor: pointer;
+  border: 1px solid #333;
+  border-radius: 5px;
+  background-color: #f5f5f5;
+  transition: all 0.3s ease;
+}
+
+.boton:hover {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
