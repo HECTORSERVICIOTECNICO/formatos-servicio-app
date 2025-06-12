@@ -34,24 +34,16 @@ export default function PanelFacturacion() {
     banco: "",
     cuenta: "",
     tipoCuenta: "",
-    titular: ""
+    titular: "",
+    observaciones: ""
   });
 
-  const [formServicio, setFormServicio] = useState({
-    fecha: "", nombre: "", telefono: "", direccion: "", ciudad: "",
-    articulo: "", marca: "", modelo: "", serie: "", color: "",
-    estado: "", falla: "", modeloRefrig: "", tpRefrig: "",
-    capacidad: "", cgRefrig: "", mantenimiento: false,
-    reparacion: false, revision: false, motor: "", amperios: "",
-    unidad: "", voltaje: "", cotizacion: false, diagnostico: "",
-    observacion: "", valor: "", abono: "", saldo: ""
-  });
   const [facturas, setFacturas] = useState([]);
-  const [servicios, setServicios] = useState([]);
   const [consecutivoFactura, setConsecutivoFactura] = useState(1);
-  const [consecutivoServicio, setConsecutivoServicio] = useState(1);
-  const printRef = useRef();
   const facturaRef = useRef();
+  const [facturaParaImprimir, setFacturaParaImprimir] = useState(null);
+  const [detalleFactura, setDetalleFactura] = useState(null);
+  const [verFacturasGuardadas, setVerFacturasGuardadas] = useState(false);
 
   const guardarFactura = async () => {
     const nueva = {
@@ -61,20 +53,8 @@ export default function PanelFacturacion() {
       timestamp: Timestamp.now()
     };
     await addDoc(collection(db, "registros"), nueva);
-    setFormFactura({ cliente: "", cedula: "", concepto: "", valor: "", banco: "", cuenta: "", tipoCuenta: "", titular: "" });
+    setFormFactura({ cliente: "", cedula: "", concepto: "", valor: "", banco: "", cuenta: "", tipoCuenta: "", titular: "", observaciones: "" });
     setConsecutivoFactura((prev) => prev + 1);
-    obtenerRegistros();
-  };
-
-  const guardarServicio = async () => {
-    const nuevo = {
-      ...formServicio,
-      tipo: "servicio",
-      consecutivo: consecutivoServicio,
-      timestamp: Timestamp.now()
-    };
-    await addDoc(collection(db, "registros"), nuevo);
-    setConsecutivoServicio((prev) => prev + 1);
     obtenerRegistros();
   };
 
@@ -84,7 +64,6 @@ export default function PanelFacturacion() {
     const snapshot = await getDocs(q);
     const data = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
     setFacturas(data.filter((d) => d.tipo === "factura"));
-    setServicios(data.filter((d) => d.tipo === "servicio"));
   };
 
   useEffect(() => {
@@ -103,45 +82,116 @@ export default function PanelFacturacion() {
     pdf.save(`${nombre}-${consecutivo}.pdf`);
   };
 
+  const handleHistorialPrint = async (factura) => {
+    setFacturaParaImprimir(factura);
+    await new Promise((res) => setTimeout(res, 0));
+    exportarPDF(facturaRef, "factura", factura.consecutivo);
+  };
+
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-10">
-      {/* Formulario Cuenta de Cobro */}
-      <div className="grid grid-cols-2 gap-2">
-        {Object.entries(formFactura).map(([campo, valor]) => (
-          <input
-            key={campo}
-            placeholder={campo.charAt(0).toUpperCase() + campo.slice(1)}
-            className="w-full border p-2 rounded"
-            value={valor}
-            onChange={(e) => setFormFactura({ ...formFactura, [campo]: e.target.value })}
-          />
-        ))}
-      </div>
-      <div ref={facturaRef} className="p-6 bg-white shadow border">
-        <img src="/logo.png" alt="Logo" style={{ height: "160px", width: "auto", marginBottom: "1rem" }} />
-        <h1 className="text-2xl font-bold mb-4">CUENTA DE COBRO</h1>
-        <p className="mb-1 font-semibold">Héctor Maya</p>
-        <p className="mb-4 font-semibold">C.C. 9.969.799 de Anserma Caldas</p>
-        <p><strong>No:</strong> {consecutivoFactura}</p>
-        <p><strong>Fecha:</strong> {new Date().toLocaleDateString()}</p>
-        <br />
-        <p><strong>Cliente:</strong> {formFactura.cliente}</p>
-        <p><strong>Cédula:</strong> {formFactura.cedula}</p>
-        <p><strong>Concepto:</strong> {formFactura.concepto}</p>
-        <p><strong>Valor:</strong> ${formFactura.valor}</p>
-        <br />
-        <p><strong>Favor realizar el pago a:</strong></p>
-        <p>Banco: {formFactura.banco} | Cuenta: {formFactura.cuenta} ({formFactura.tipoCuenta})</p>
-        <p>Titular: {formFactura.titular}</p>
-        <br />
-        <p className="mt-6">Firma: _____________________________</p>
-      </div>
-      <div className="space-x-2">
-        <button onClick={guardarFactura} className="bg-green-600 text-white px-4 py-2 rounded">
-          Guardar Cuenta de Cobro
-        </button>
-        <button onClick={() => exportarPDF(facturaRef, "factura", consecutivoFactura)} className="bg-gray-800 text-white px-4 py-2 rounded">
-          Imprimir PDF Cuenta de Cobro
+      {!verFacturasGuardadas && (
+        <>
+          {/* Formulario Cuenta de Cobro */}
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(formFactura).map(([campo, valor]) => (
+              <input
+                key={campo}
+                placeholder={campo.charAt(0).toUpperCase() + campo.slice(1)}
+                className="w-full border p-2 rounded"
+                value={valor}
+                onChange={(e) => setFormFactura({ ...formFactura, [campo]: e.target.value })}
+              />
+            ))}
+          </div>
+
+          <div ref={facturaRef} className="p-6 bg-white shadow border mt-4 text-center">
+            <img src="/logo.png" alt="Logo" style={{ height: "160px", width: "auto", marginBottom: "1rem" }} />
+            <h1 className="text-2xl font-bold mb-4">CUENTA DE COBRO</h1>
+            <p className="mb-1 font-semibold">Héctor Maya</p>
+            <p className="mb-4 font-semibold">C.C. 9.969.799 de Anserma Caldas</p>
+            <p><strong>No:</strong> {facturaParaImprimir?.consecutivo ?? consecutivoFactura}</p>
+            <p><strong>Fecha:</strong> {new Date().toLocaleDateString()}</p>
+            <br />
+            <p><strong>Cliente:</strong> {facturaParaImprimir?.cliente ?? formFactura.cliente}</p>
+            <p><strong>Cédula:</strong> {facturaParaImprimir?.cedula ?? formFactura.cedula}</p>
+            <p><strong>Concepto:</strong> {facturaParaImprimir?.concepto ?? formFactura.concepto}</p>
+            <p><strong>Valor:</strong> ${facturaParaImprimir?.valor ?? formFactura.valor}</p>
+            <br />
+            <p><strong>Favor realizar el pago a:</strong></p>
+            <p>Banco: {facturaParaImprimir?.banco ?? formFactura.banco} | Cuenta: {facturaParaImprimir?.cuenta ?? formFactura.cuenta} ({facturaParaImprimir?.tipoCuenta ?? formFactura.tipoCuenta})</p>
+            <p>Titular: {facturaParaImprimir?.titular ?? formFactura.titular}</p>
+            <br />
+            <p><strong>Observaciones:</strong> {facturaParaImprimir?.observaciones ?? formFactura.observaciones}</p>
+            <br />
+            <p className="mt-6">Firma: _____________________________</p>
+          </div>
+
+          <div className="space-x-2 mt-4">
+            <button onClick={guardarFactura} className="bg-green-600 text-white px-4 py-2 rounded">
+              Guardar Cuenta de Cobro
+            </button>
+            <button onClick={() => exportarPDF(facturaRef, "factura", consecutivoFactura)} className="bg-gray-800 text-white px-4 py-2 rounded">
+              Imprimir PDF Cuenta de Cobro
+            </button>
+            <button
+              onClick={() => setVerFacturasGuardadas(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+            >
+              Facturas Guardadas
+            </button>
+          </div>
+        </>
+      )}
+
+      {verFacturasGuardadas && (
+        <div className="mt-10">
+          <h2 className="text-xl font-bold mb-4">Facturas Guardadas</h2>
+          {facturas.map((f) => (
+            <div key={f.id} className="border p-4 mt-2 rounded bg-white shadow-md">
+              <p><strong>Consecutivo:</strong> <button onClick={() => setDetalleFactura(f)} className="text-blue-600 underline hover:text-blue-800">{f.consecutivo}</button></p>
+              <p><strong>Cliente:</strong> {f.cliente}</p>
+              <p><strong>Concepto:</strong> {f.concepto}</p>
+              <p><strong>Fecha:</strong> {f.timestamp?.toDate().toLocaleString()}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {detalleFactura && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow-lg max-h-[90vh] overflow-auto w-full max-w-2xl">
+            <h3 className="text-xl font-bold mb-4">Detalle Cuenta de Cobro #{detalleFactura.consecutivo}</h3>
+            <table className="w-full border border-black mb-4">
+              <tbody>
+                {Object.entries(detalleFactura).map(([campo, valor], i) => (
+                  campo !== "id" && campo !== "tipo" && (
+                    <tr key={i}>
+                      <td className="border p-1 font-bold w-1/3">{campo.charAt(0).toUpperCase() + campo.slice(1)}:</td>
+                      <td className="border p-1">{valor?.toString()}</td>
+                    </tr>
+                  )
+                ))}
+              </tbody>
+            </table>
+            <div className="text-right space-x-2">
+              <button onClick={() => handleHistorialPrint(detalleFactura)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded shadow">
+                Imprimir
+              </button>
+              <button onClick={() => setDetalleFactura(null)} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded shadow">
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-10">
+        <button
+          onClick={() => (window.location.href = "/")}
+          className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded shadow"
+        >
+          Volver al Inicio
         </button>
       </div>
     </div>
