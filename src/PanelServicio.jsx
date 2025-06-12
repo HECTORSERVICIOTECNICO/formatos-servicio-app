@@ -26,18 +26,37 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 export default function PanelServicio() {
-  const [formServicio, setFormServicio] = useState({
+  const camposIniciales = {
     cliente: "",
+    telefono: "",
+    direccion: "",
+    ciudad: "",
     articulo: "",
     marca: "",
     modelo: "",
-    observaciones: ""
-  });
+    serie: "",
+    color: "",
+    estado: "",
+    falla: "",
+    modeloRefrig: "",
+    tpRefrig: "",
+    capacidad: "",
+    cgRefrig: "",
+    motor: "",
+    amperios: "",
+    unidad: "",
+    observacion: "",
+    valor: "",
+    abono: "",
+    saldo: "",
+    diagnostico: "",
+    tipo: ""
+  };
 
+  const [formServicio, setFormServicio] = useState(camposIniciales);
   const [servicios, setServicios] = useState([]);
   const [consecutivoServicio, setConsecutivoServicio] = useState(1);
   const servicioRef = useRef();
-  const [servicioParaImprimir, setServicioParaImprimir] = useState(null);
   const [detalleServicio, setDetalleServicio] = useState(null);
   const [verServiciosGuardados, setVerServiciosGuardados] = useState(false);
 
@@ -49,7 +68,7 @@ export default function PanelServicio() {
       timestamp: Timestamp.now()
     };
     await addDoc(collection(db, "registros"), nuevo);
-    setFormServicio({ cliente: "", articulo: "", marca: "", modelo: "", observaciones: "" });
+    setFormServicio(camposIniciales);
     setConsecutivoServicio((prev) => prev + 1);
     obtenerRegistros();
   };
@@ -79,39 +98,32 @@ export default function PanelServicio() {
   };
 
   const handleHistorialPrint = async (servicio) => {
-    setServicioParaImprimir(servicio);
+    const ref = servicioRef;
     await new Promise((res) => setTimeout(res, 0));
-    exportarPDF(servicioRef, "servicio", servicio.consecutivo);
+    exportarPDF(ref, "servicio", servicio.consecutivo);
   };
 
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-10">
       {!verServiciosGuardados && (
         <>
-          <div className="grid grid-cols-2 gap-2">
-            {Object.entries(formServicio).map(([campo, valor]) => (
-              <input
-                key={campo}
-                placeholder={campo.charAt(0).toUpperCase() + campo.slice(1)}
-                className="w-full border p-2 rounded"
-                value={valor}
-                onChange={(e) => setFormServicio({ ...formServicio, [campo]: e.target.value })}
-              />
-            ))}
-          </div>
-
-          <div ref={servicioRef} className="p-6 bg-white shadow border mt-4 text-center">
+          <div ref={servicioRef} className="p-6 bg-white shadow border mt-4">
             <img src="/logo.png" alt="Logo" style={{ height: "160px", width: "auto", marginBottom: "1rem" }} />
-            <h1 className="text-2xl font-bold mb-4">FORMATO DE SERVICIO</h1>
-            <p><strong>No:</strong> {servicioParaImprimir?.consecutivo ?? consecutivoServicio}</p>
-            <p><strong>Fecha:</strong> {new Date().toLocaleDateString()}</p>
-            <br />
-            <p><strong>Cliente:</strong> {servicioParaImprimir?.cliente ?? formServicio.cliente}</p>
-            <p><strong>Artículo:</strong> {servicioParaImprimir?.articulo ?? formServicio.articulo}</p>
-            <p><strong>Marca:</strong> {servicioParaImprimir?.marca ?? formServicio.marca}</p>
-            <p><strong>Modelo:</strong> {servicioParaImprimir?.modelo ?? formServicio.modelo}</p>
-            <br />
-            <p><strong>Observaciones:</strong> {servicioParaImprimir?.observaciones ?? formServicio.observaciones}</p>
+            <h1 className="text-2xl font-bold mb-4 text-center">Formato Técnico de Servicio</h1>
+            <p><strong>Consecutivo:</strong> {consecutivoServicio}</p>
+            <p><strong>Fecha:</strong> {new Date().toLocaleString()}</p>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
+              {Object.entries(formServicio).map(([campo, valor]) => (
+                <input
+                  key={campo}
+                  placeholder={campo.charAt(0).toUpperCase() + campo.slice(1)}
+                  className="w-full border p-2 rounded"
+                  value={valor}
+                  onChange={(e) => setFormServicio({ ...formServicio, [campo]: e.target.value })}
+                />
+              ))}
+            </div>
           </div>
 
           <div className="space-x-2 mt-4">
