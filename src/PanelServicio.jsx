@@ -83,8 +83,6 @@ export default function PanelServicio() {
     setServicioEditandoId(null);
     obtenerRegistros();
   };
-    
-    
 
   const eliminarHistorial = async () => {
     const snapshot = await getDocs(collection(db, "registros"));
@@ -142,6 +140,15 @@ export default function PanelServicio() {
     <p><strong className="uppercase">{etiqueta}:</strong> {getValor(campo)}</p>
   );
 
+  const estiloVistaPrevia = {
+    width: '100%',
+    maxWidth: '794px',
+    minHeight: window.innerWidth < 768 ? '600px' : '1123px',
+    margin: '0 auto',
+    transform: window.innerWidth < 768 ? 'scale(0.85)' : 'scale(1)',
+    transformOrigin: 'top center'
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6">
       {!verServiciosGuardados && (
@@ -158,7 +165,7 @@ export default function PanelServicio() {
             ))}
           </div>
 
-          <div ref={servicioRef} className="p-8 bg-white shadow border mt-4 text-sm print:block print:p-0" style={{ width: '794px', minHeight: '1123px', margin: '0 auto' }}>
+          <div ref={servicioRef} className="p-8 bg-white shadow border mt-4 text-sm print:block print:p-0" style={estiloVistaPrevia}>
             <div className="text-center">
               <img src="/logo.png" alt="Logo" style={{ height: "90px", margin: "0 auto" }} />
               <h1 className="text-2xl font-bold mt-2">Formato Técnico de Servicio</h1>

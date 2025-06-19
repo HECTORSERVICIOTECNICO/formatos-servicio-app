@@ -192,7 +192,19 @@ export default function PanelFacturacion() {
             ))}
           </div>
 
-          <div ref={facturaRef} className="p-6 bg-white shadow border mt-4 text-center" style={{ width: '794px', minHeight: '1123px', margin: '0 auto' }}>
+          <div
+  ref={facturaRef}
+  className="p-4 bg-white shadow border mt-4 text-center"
+  style={{
+    width: '100%',
+    maxWidth: '794px',
+    minHeight: window.innerWidth < 768 ? '600px' : '1123px',
+    margin: '0 auto',
+    transform: window.innerWidth < 768 ? 'scale(0.85)' : 'scale(1)',
+    transformOrigin: 'top center'
+  }}
+>
+
             <img src="/logo.png" alt="Logo" style={{ height: "160px", width: "auto", marginBottom: "1rem" }} />
             <h1 className="text-2xl font-bold mb-4">CUENTA DE COBRO</h1>
             <p className="mb-1 font-semibold">Héctor Maya</p>
