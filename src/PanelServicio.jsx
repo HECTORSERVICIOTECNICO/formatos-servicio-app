@@ -6,6 +6,9 @@ import {
   collection,
   addDoc,
   getDocs,
+  deleteDoc,
+  doc,
+  updateDoc,
   Timestamp,
   query,
   orderBy
@@ -54,10 +57,10 @@ export default function PanelServicio() {
   const [formServicio, setFormServicio] = useState(camposIniciales);
   const [servicios, setServicios] = useState([]);
   const [consecutivoServicio, setConsecutivoServicio] = useState(1);
+  const [servicioEditandoId, setServicioEditandoId] = useState(null);
   const servicioRef = useRef();
   const firmaRef = useRef();
   const [servicioParaImprimir, setServicioParaImprimir] = useState(null);
-  const [detalleServicio, setDetalleServicio] = useState(null);
   const [verServiciosGuardados, setVerServiciosGuardados] = useState(false);
   const [firma, setFirma] = useState(null);
 
@@ -65,13 +68,28 @@ export default function PanelServicio() {
     const nuevo = {
       ...formServicio,
       tipo: "servicio",
-      consecutivo: consecutivoServicio,
       timestamp: Timestamp.now()
     };
-    await addDoc(collection(db, "registros"), nuevo);
+
+    if (servicioEditandoId) {
+      const ref = doc(db, "registros", servicioEditandoId);
+      await updateDoc(ref, nuevo);
+    } else {
+      nuevo.consecutivo = consecutivoServicio;
+      await addDoc(collection(db, "registros"), nuevo);
+      setConsecutivoServicio((prev) => prev + 1);
+    }
+
     setFormServicio(camposIniciales);
-    setConsecutivoServicio((prev) => prev + 1);
+    setServicioEditandoId(null);
     obtenerRegistros();
+  };
+
+  const eliminarHistorial = async () => {
+    const snapshot = await getDocs(collection(db, "registros"));
+    const batch = snapshot.docs.map((docu) => deleteDoc(doc(db, "registros", docu.id)));
+    await Promise.all(batch);
+    setServicios([]);
   };
 
   const obtenerRegistros = async () => {
@@ -106,33 +124,12 @@ export default function PanelServicio() {
 
   const getValor = (campo) => servicioParaImprimir?.[campo] ?? formServicio[campo];
 
-  const filas = [
-    ["Cliente", "cliente"],
-    ["Teléfono", "telefono"],
-    ["Dirección", "direccion"],
-    ["Ciudad", "ciudad"],
-    ["Artículo", "articulo"],
-    ["Marca", "marca"],
-    ["Modelo", "modelo"],
-    ["Serie", "serie"],
-    ["Color", "color"],
-    ["Estado", "estado"],
-    ["Falla", "falla"],
-    ["Diagnóstico", "diagnostico"],
-    ["Observación", "observacion"],
-    ["Motor", "motor"],
-    ["Amperios", "amperios"],
-    ["Unidad", "unidad"],
-    ["Capacidad", "capacidad"],
-    ["Tipo", "tipo"],
-    ["Carga", "carga"],
-    ["Valor", "valor"],
-    ["Abono", "abono"],
-    ["Saldo", "saldo"]
-  ];
+  const renderDato = (etiqueta, campo) => (
+    <p><strong className="uppercase">{etiqueta}:</strong> {getValor(campo)}</p>
+  );
 
   return (
-    <div className="max-w-6xl mx-auto p-4 space-y-10">
+    <div className="max-w-4xl mx-auto p-4 space-y-6">
       {!verServiciosGuardados && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -141,55 +138,74 @@ export default function PanelServicio() {
                 key={campo}
                 placeholder={campo.charAt(0).toUpperCase() + campo.slice(1)}
                 className="w-full border p-2 rounded text-sm"
-                style={{ maxWidth: "100%" }}
                 value={valor}
                 onChange={(e) => setFormServicio({ ...formServicio, [campo]: e.target.value })}
               />
             ))}
           </div>
 
-          <div ref={servicioRef} className="p-6 bg-white shadow border mt-4 text-sm text-left space-y-4 print:block">
-            <img src="/logo.png" alt="Logo" style={{ height: "90px", width: "auto" }} />
-            <h1 className="text-xl font-bold mb-2">Formato Técnico de Servicio</h1>
-            <p><strong>Consecutivo:</strong> {getValor("consecutivo")}</p>
-            <p><strong>Fecha:</strong> {new Date().toLocaleString()}</p>
-
-            <table className="w-full text-sm border border-black table-fixed">
-              <tbody>
-                {filas.map(([label, key], index) => (
-                  index % 2 === 0 ? (
-                    <tr key={index} className="align-top border-t border-black">
-                      <td className="p-2 w-1/4 font-semibold align-top border-r border-black break-words">{label}:</td>
-                      <td className="p-2 w-1/4 border-r border-black">
-                        <div className="min-h-[3rem] overflow-hidden" style={{ wordBreak: 'break-word', maxWidth: '100%' }}>{getValor(key)}</div>
-                      </td>
-                      {filas[index + 1] ? (
-                        <>
-                          <td className="p-2 w-1/4 font-semibold align-top border-r border-black break-words">{filas[index + 1][0]}:</td>
-                          <td className="p-2 w-1/4">
-                            <div className="min-h-[3rem] overflow-hidden" style={{ wordBreak: 'break-word', maxWidth: '100%' }}>{getValor(filas[index + 1][1])}</div>
-                          </td>
-                        </>
-                      ) : (
-                        <td colSpan={2}></td>
-                      )}
-                    </tr>
-                  ) : null
-                ))}
-              </tbody>
-            </table>
-
-            <div className="mt-6">
-              <h2 className="font-semibold">Firma del Cliente</h2>
-              <div className="border border-gray-400 h-24 w-64 mt-2" ref={firmaRef} contentEditable={!servicioParaImprimir}>
-                {firma ? <img src={firma} alt="Firma" /> : <span className="text-gray-400">Firma aquí...</span>}
-              </div>
+          <div ref={servicioRef} className="p-8 bg-white shadow border mt-4 text-sm print:block print:p-0">
+            <div className="text-center">
+              <img src="/logo.png" alt="Logo" style={{ height: "90px", margin: "0 auto" }} />
+              <h1 className="text-2xl font-bold mt-2">Formato Técnico de Servicio</h1>
+              <p className="mt-2"><strong>Consecutivo:</strong> {getValor("consecutivo")}</p>
+              <p><strong>Fecha:</strong> {new Date().toLocaleString()}</p>
             </div>
 
-            <div className="mt-10 hidden print:block text-sm">
-              <p><strong>Héctor Maya</strong> - MZ 12 CS 13 Barrio las Violetas - Dosquebradas/RDA</p>
-              <p>TELEFONOS: 320 408 3173 - 311 384 9609</p>
-              <p>CORREO: reparacionlavadorashector@gmail.com</p>
+            <div className="mt-4 space-y-2">
+              <h2 className="font-bold">📌 Información del Cliente</h2>
+              {renderDato("Cliente", "cliente")}
+              {renderDato("Teléfono", "telefono")}
+              {renderDato("Dirección", "direccion")}
+              {renderDato("Ciudad", "ciudad")}
+
+              <h2 className="font-bold mt-4">📦 Datos del Artículo</h2>
+              {renderDato("Artículo", "articulo")}
+              {renderDato("Marca", "marca")}
+              {renderDato("Modelo", "modelo")}
+              {renderDato("Serie", "serie")}
+              {renderDato("Color", "color")}
+              {renderDato("Estado", "estado")}
+              {renderDato("Falla", "falla")}
+
+              <h2 className="font-bold mt-4">❄️ Especificaciones Técnicas</h2>
+              {renderDato("Motor", "motor")}
+              {renderDato("Amperios", "amperios")}
+              {renderDato("Unidad", "unidad")}
+              {renderDato("Capacidad", "capacidad")}
+              {renderDato("Tipo", "tipo")}
+              {renderDato("Carga", "carga")}
+
+              <h2 className="font-bold mt-4">💲 Valores</h2>
+              {renderDato("Valor", "valor")}
+              {renderDato("Abono", "abono")}
+              {renderDato("Saldo", "saldo")}
+
+              <h2 className="font-bold uppercase mt-4">Diagnóstico:</h2>
+              <p>{getValor("diagnostico")}</p>
+
+              <h2 className="font-bold uppercase mt-4">Observación:</h2>
+              <p>{getValor("observacion")}</p>
+
+              <div className="mt-6">
+                <h2 className="font-bold">Firma del Cliente</h2>
+                <div className="border-b border-black w-64 mt-6" ref={firmaRef} style={{ height: '3rem' }}></div>
+              </div>
+
+              <div className="mt-10 print:block text-sm text-center">
+                <p><strong>Héctor Maya</strong> - MZ 12 CS 13 Barrio las Violetas - Dosquebradas/RDA</p>
+                <p>TELEFONOS: 320 408 3173 - 311 384 9609</p>
+                <p>CORREO: reparacionlavadorashector@gmail.com</p>
+              </div>
+
+              <div className="mt-4 space-x-2">
+                <button onClick={() => setVerServiciosGuardados(true)} className="bg-blue-500 text-white px-4 py-2 rounded">
+                  Ver Servicios Guardados
+                </button>
+                <button onClick={() => window.location.href = "/"} className="bg-yellow-500 text-white px-4 py-2 rounded">
+                  Ir al Inicio
+                </button>
+              </div>
             </div>
           </div>
 
@@ -200,14 +216,69 @@ export default function PanelServicio() {
             <button onClick={() => exportarPDF(servicioRef, "servicio", consecutivoServicio)} className="bg-gray-800 text-white px-4 py-2 rounded">
               Imprimir PDF Servicio
             </button>
-            <button
-              onClick={() => setVerServiciosGuardados(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-            >
-              Servicios Guardados
-            </button>
           </div>
         </>
+      )}
+
+      {verServiciosGuardados && (
+        <div className="mt-10">
+          <h2 className="text-xl font-bold mb-4">Servicios Guardados</h2>
+          {servicios.length === 0 ? (
+            <p className="text-gray-600">No hay servicios registrados.</p>
+          ) : (
+            servicios.map((s) => (
+              <div key={s.id} className="border p-4 mt-2 rounded bg-white shadow-md">
+                <p>
+                  <strong>Consecutivo:</strong>{" "}
+                  <button
+                    onClick={() => {
+                      setServicioParaImprimir(s);
+                      setVerServiciosGuardados(false);
+                    }}
+                    className="text-blue-600 underline hover:text-blue-800"
+                  >
+                    {s.consecutivo}
+                  </button>
+                </p>
+                <p><strong>Cliente:</strong> {s.cliente}</p>
+                <p><strong>Artículo:</strong> {s.articulo}</p>
+                <p><strong>Fecha:</strong> {s.timestamp?.toDate().toLocaleString()}</p>
+
+                <div className="mt-2 space-x-2">
+                  <button
+                    onClick={() => {
+                      setFormServicio(s);
+                      setServicioEditandoId(s.id);
+                      setServicioParaImprimir(null);
+                      setVerServiciosGuardados(false);
+                    }}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await deleteDoc(doc(db, "registros", s.id));
+                      obtenerRegistros();
+                    }}
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+
+          <div className="mt-6 space-x-2">
+            <button onClick={() => setVerServiciosGuardados(false)} className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded shadow">
+              Volver al Inicio
+            </button>
+            <button onClick={eliminarHistorial} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded shadow">
+              Eliminar Historial
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

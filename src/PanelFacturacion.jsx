@@ -6,9 +6,12 @@ import {
   collection,
   addDoc,
   getDocs,
+  deleteDoc,
+  doc,
   Timestamp,
   query,
-  orderBy
+  orderBy,
+  updateDoc
 } from "firebase/firestore";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -40,22 +43,39 @@ export default function PanelFacturacion() {
 
   const [facturas, setFacturas] = useState([]);
   const [consecutivoFactura, setConsecutivoFactura] = useState(1);
+  const [facturaEditandoId, setFacturaEditandoId] = useState(null);
   const facturaRef = useRef();
   const [facturaParaImprimir, setFacturaParaImprimir] = useState(null);
-  const [detalleFactura, setDetalleFactura] = useState(null);
   const [verFacturasGuardadas, setVerFacturasGuardadas] = useState(false);
+  const [detalleFactura, setDetalleFactura] = useState(null);
 
   const guardarFactura = async () => {
     const nueva = {
       ...formFactura,
       tipo: "factura",
-      consecutivo: consecutivoFactura,
       timestamp: Timestamp.now()
     };
-    await addDoc(collection(db, "registros"), nueva);
+
+    if (facturaEditandoId) {
+      const ref = doc(db, "registros", facturaEditandoId);
+      await updateDoc(ref, nueva);
+    } else {
+      nueva.consecutivo = consecutivoFactura;
+      await addDoc(collection(db, "registros"), nueva);
+      setConsecutivoFactura((prev) => prev + 1);
+    }
+
     setFormFactura({ cliente: "", cedula: "", concepto: "", valor: "", banco: "", cuenta: "", tipoCuenta: "", titular: "", observaciones: "" });
-    setConsecutivoFactura((prev) => prev + 1);
+    setFacturaEditandoId(null);
     obtenerRegistros();
+  };
+
+  const eliminarHistorial = async () => {
+    const snapshot = await getDocs(collection(db, "registros"));
+    const batch = snapshot.docs.map((docu) => deleteDoc(doc(db, "registros", docu.id)));
+    await Promise.all(batch);
+    setFacturas([]);
+    setConsecutivoFactura(1);
   };
 
   const obtenerRegistros = async () => {
@@ -82,17 +102,56 @@ export default function PanelFacturacion() {
     pdf.save(`${nombre}-${consecutivo}.pdf`);
   };
 
-  const handleHistorialPrint = async (factura) => {
-    setFacturaParaImprimir(factura);
-    await new Promise((res) => setTimeout(res, 0));
-    exportarPDF(facturaRef, "factura", factura.consecutivo);
-  };
-
   return (
     <div className="max-w-6xl mx-auto p-4 space-y-10">
-      {!verFacturasGuardadas && (
+      {verFacturasGuardadas ? (
         <>
-          {/* Formulario Cuenta de Cobro */}
+          <h2 className="text-xl font-bold mb-4">Facturas Guardadas</h2>
+          {facturas.map((f) => (
+            <div key={f.id} className="border p-4 mt-2 rounded bg-white shadow-md">
+              <p><strong>Consecutivo:</strong> <button onClick={() => setDetalleFactura(f)} className="text-blue-600 underline hover:text-blue-800">{f.consecutivo}</button></p>
+              <p><strong>Cliente:</strong> {f.cliente}</p>
+              <p><strong>Concepto:</strong> {f.concepto}</p>
+              <p><strong>Fecha:</strong> {f.timestamp?.toDate().toLocaleString()}</p>
+              <div className="mt-2 space-x-2">
+                <button onClick={() => { setFacturaParaImprimir(f); setVerFacturasGuardadas(false); setFormFactura({ cliente: "", cedula: "", concepto: "", valor: "", banco: "", cuenta: "", tipoCuenta: "", titular: "", observaciones: "" }); setFacturaEditandoId(null); }} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">Imprimir</button>
+                <button onClick={() => { setFormFactura(f); setFacturaEditandoId(f.id); setFacturaParaImprimir(null); setVerFacturasGuardadas(false); }} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">Editar</button>
+                <button onClick={async () => { await deleteDoc(doc(db, "registros", f.id)); obtenerRegistros(); }} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">Eliminar</button>
+              </div>
+            </div>
+          ))}
+
+          <div className="mt-6 space-x-2">
+            <button onClick={() => setVerFacturasGuardadas(false)} className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded shadow">Volver al Inicio</button>
+            <button onClick={eliminarHistorial} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded shadow">Eliminar Historial</button>
+          </div>
+
+          {detalleFactura && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded shadow-lg max-h-[90vh] overflow-auto w-full max-w-2xl">
+                <h3 className="text-xl font-bold mb-4">Detalle Cuenta de Cobro #{detalleFactura.consecutivo}</h3>
+                <table className="w-full border border-black mb-4">
+                  <tbody>
+                    {Object.entries(detalleFactura).map(([campo, valor], i) => (
+                      campo !== "id" && campo !== "tipo" && (
+                        <tr key={i}>
+                          <td className="border p-1 font-bold w-1/3">{campo.charAt(0).toUpperCase() + campo.slice(1)}:</td>
+                          <td className="border p-1">{valor?.toString()}</td>
+                        </tr>
+                      )
+                    ))}
+                  </tbody>
+                </table>
+                <div className="text-right space-x-2">
+                  <button onClick={() => exportarPDF(facturaRef, 'factura', detalleFactura.consecutivo)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded shadow">Imprimir</button>
+                  <button onClick={() => setDetalleFactura(null)} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded shadow">Cerrar</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
           <div className="grid grid-cols-2 gap-2">
             {Object.entries(formFactura).map(([campo, valor]) => (
               <input
@@ -128,71 +187,15 @@ export default function PanelFacturacion() {
           </div>
 
           <div className="space-x-2 mt-4">
-            <button onClick={guardarFactura} className="bg-green-600 text-white px-4 py-2 rounded">
-              Guardar Cuenta de Cobro
-            </button>
-            <button onClick={() => exportarPDF(facturaRef, "factura", consecutivoFactura)} className="bg-gray-800 text-white px-4 py-2 rounded">
-              Imprimir PDF Cuenta de Cobro
-            </button>
-            <button
-              onClick={() => setVerFacturasGuardadas(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-            >
-              Facturas Guardadas
-            </button>
+            <button onClick={guardarFactura} className="bg-green-600 text-white px-4 py-2 rounded">Guardar Cuenta de Cobro</button>
+            <button onClick={() => exportarPDF(facturaRef, "factura", facturaParaImprimir?.consecutivo ?? consecutivoFactura)} className="bg-gray-800 text-white px-4 py-2 rounded">Imprimir PDF Cuenta de Cobro</button>
+            <button onClick={() => setVerFacturasGuardadas(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Facturas Guardadas</button>
           </div>
         </>
       )}
 
-      {verFacturasGuardadas && (
-        <div className="mt-10">
-          <h2 className="text-xl font-bold mb-4">Facturas Guardadas</h2>
-          {facturas.map((f) => (
-            <div key={f.id} className="border p-4 mt-2 rounded bg-white shadow-md">
-              <p><strong>Consecutivo:</strong> <button onClick={() => setDetalleFactura(f)} className="text-blue-600 underline hover:text-blue-800">{f.consecutivo}</button></p>
-              <p><strong>Cliente:</strong> {f.cliente}</p>
-              <p><strong>Concepto:</strong> {f.concepto}</p>
-              <p><strong>Fecha:</strong> {f.timestamp?.toDate().toLocaleString()}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {detalleFactura && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow-lg max-h-[90vh] overflow-auto w-full max-w-2xl">
-            <h3 className="text-xl font-bold mb-4">Detalle Cuenta de Cobro #{detalleFactura.consecutivo}</h3>
-            <table className="w-full border border-black mb-4">
-              <tbody>
-                {Object.entries(detalleFactura).map(([campo, valor], i) => (
-                  campo !== "id" && campo !== "tipo" && (
-                    <tr key={i}>
-                      <td className="border p-1 font-bold w-1/3">{campo.charAt(0).toUpperCase() + campo.slice(1)}:</td>
-                      <td className="border p-1">{valor?.toString()}</td>
-                    </tr>
-                  )
-                ))}
-              </tbody>
-            </table>
-            <div className="text-right space-x-2">
-              <button onClick={() => handleHistorialPrint(detalleFactura)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded shadow">
-                Imprimir
-              </button>
-              <button onClick={() => setDetalleFactura(null)} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded shadow">
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="mt-10">
-        <button
-          onClick={() => (window.location.href = "/")}
-          className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded shadow"
-        >
-          Volver al Inicio
-        </button>
+        <button onClick={() => (window.location.href = "/")} className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded shadow">Volver al Inicio</button>
       </div>
     </div>
   );
