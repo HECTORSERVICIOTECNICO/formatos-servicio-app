@@ -114,8 +114,19 @@ export default function PanelServicio() {
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "pt", "a4");
     const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    let position = 0;
+
+    while (position < imgHeight) {
+      pdf.addImage(imgData, "PNG", 0, position * -1, pdfWidth, imgHeight);
+      if (position + pageHeight < imgHeight) {
+        pdf.addPage();
+      }
+      position += pageHeight;
+    }
+
     pdf.save(`${nombre}-${consecutivo}.pdf`);
   };
 
