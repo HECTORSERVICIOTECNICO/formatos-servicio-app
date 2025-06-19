@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { openDB } from "idb";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBSPOaw1y70xDxtvismCdNR-7i_CbgHG50",
@@ -27,6 +28,12 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+const dbLocalPromise = openDB("servicioDB", 1, {
+  upgrade(db) {
+    db.createObjectStore("servicios", { keyPath: "id", autoIncrement: true });
+  }
+});
 
 export default function PanelServicio() {
   const camposIniciales = {
@@ -70,17 +77,36 @@ export default function PanelServicio() {
       timestamp: Timestamp.now()
     };
 
-    if (servicioEditandoId) {
-      const ref = doc(db, "registros", servicioEditandoId);
-      await updateDoc(ref, nuevo);
+    if (navigator.onLine) {
+      if (servicioEditandoId) {
+        const ref = doc(db, "registros", servicioEditandoId);
+        await updateDoc(ref, nuevo);
+      } else {
+        nuevo.consecutivo = consecutivoServicio;
+        await addDoc(collection(db, "registros"), nuevo);
+        setConsecutivoServicio((prev) => prev + 1);
+      }
+      obtenerRegistros();
     } else {
+      const dbLocal = await dbLocalPromise;
+      nuevo.local = true;
       nuevo.consecutivo = consecutivoServicio;
-      await addDoc(collection(db, "registros"), nuevo);
-      setConsecutivoServicio((prev) => prev + 1);
+      await dbLocal.add("servicios", nuevo);
+      alert("Sin conexión: el servicio se guardó localmente y se sincronizará cuando haya internet.");
     }
 
     setFormServicio(camposIniciales);
     setServicioEditandoId(null);
+  };
+
+  const sincronizarLocales = async () => {
+    if (!navigator.onLine) return;
+    const dbLocal = await dbLocalPromise;
+    const todas = await dbLocal.getAll("servicios");
+    for (const s of todas) {
+      await addDoc(collection(db, "registros"), s);
+      await dbLocal.delete("servicios", s.id);
+    }
     obtenerRegistros();
   };
 
@@ -100,6 +126,7 @@ export default function PanelServicio() {
   };
 
   useEffect(() => {
+    sincronizarLocales();
     obtenerRegistros();
   }, []);
 
@@ -126,12 +153,6 @@ export default function PanelServicio() {
     }
 
     pdf.save(`${nombre}-${consecutivo}.pdf`);
-  };
-
-  const handleHistorialPrint = async (servicio) => {
-    setServicioParaImprimir(servicio);
-    await new Promise((res) => setTimeout(res, 0));
-    exportarPDF(servicioRef, "servicio", servicio.consecutivo);
   };
 
   const getValor = (campo) => servicioParaImprimir?.[campo] ?? formServicio[campo];
@@ -218,15 +239,6 @@ export default function PanelServicio() {
                 <p>TELEFONOS: 320 408 3173 - 311 384 9609</p>
                 <p>CORREO: reparacionlavadorashector@gmail.com</p>
               </div>
-
-              <div className="mt-4 space-x-2">
-                <button onClick={() => setVerServiciosGuardados(true)} className="bg-blue-500 text-white px-4 py-2 rounded">
-                  Ver Servicios Guardados
-                </button>
-                <button onClick={() => window.location.href = "/"} className="bg-yellow-500 text-white px-4 py-2 rounded">
-                  Ir al Inicio
-                </button>
-              </div>
             </div>
           </div>
 
@@ -236,6 +248,9 @@ export default function PanelServicio() {
             </button>
             <button onClick={() => exportarPDF(servicioRef, "servicio", consecutivoServicio)} className="bg-gray-800 text-white px-4 py-2 rounded">
               Imprimir PDF Servicio
+            </button>
+            <button onClick={() => setVerServiciosGuardados(true)} className="bg-blue-600 text-white px-4 py-2 rounded">
+              Ver Servicios Guardados
             </button>
           </div>
         </>
@@ -249,18 +264,7 @@ export default function PanelServicio() {
           ) : (
             servicios.map((s) => (
               <div key={s.id} className="border p-4 mt-2 rounded bg-white shadow-md">
-                <p>
-                  <strong>Consecutivo:</strong>{" "}
-                  <button
-                    onClick={() => {
-                      setServicioParaImprimir(s);
-                      setVerServiciosGuardados(false);
-                    }}
-                    className="text-blue-600 underline hover:text-blue-800"
-                  >
-                    {s.consecutivo}
-                  </button>
-                </p>
+                <p><strong>Consecutivo:</strong> {s.consecutivo}</p>
                 <p><strong>Cliente:</strong> {s.cliente}</p>
                 <p><strong>Artículo:</strong> {s.articulo}</p>
                 <p><strong>Fecha:</strong> {s.timestamp?.toDate().toLocaleString()}</p>
