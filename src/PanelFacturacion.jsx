@@ -99,18 +99,8 @@ export default function PanelFacturacion() {
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "pt", "a4");
     const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
-    let position = 0;
-    while (position < imgHeight) {
-      pdf.addImage(imgData, "PNG", 0, position * -1, pdfWidth, imgHeight);
-      if (position + pageHeight < imgHeight) {
-        pdf.addPage();
-      }
-      position += pageHeight;
-    }
-
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
     pdf.save(`${nombre}-${consecutivo}.pdf`);
   };
 
@@ -126,6 +116,7 @@ export default function PanelFacturacion() {
               <p><strong>Concepto:</strong> {f.concepto}</p>
               <p><strong>Fecha:</strong> {f.timestamp?.toDate().toLocaleString()}</p>
               <div className="mt-2 space-x-2">
+                <button onClick={() => { setFacturaParaImprimir(f); setVerFacturasGuardadas(false); setFormFactura({ cliente: "", cedula: "", concepto: "", valor: "", banco: "", cuenta: "", tipoCuenta: "", titular: "", observaciones: "" }); setFacturaEditandoId(null); }} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">Imprimir</button>
                 <button onClick={() => { setFormFactura(f); setFacturaEditandoId(f.id); setFacturaParaImprimir(null); setVerFacturasGuardadas(false); }} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">Editar</button>
                 <button onClick={async () => { await deleteDoc(doc(db, "registros", f.id)); obtenerRegistros(); }} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">Eliminar</button>
               </div>
