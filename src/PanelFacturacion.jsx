@@ -8,10 +8,10 @@ import {
   getDocs,
   deleteDoc,
   doc,
-  updateDoc,
   Timestamp,
   query,
-  orderBy
+  orderBy,
+  updateDoc
 } from "firebase/firestore";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -28,59 +28,45 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-export default function PanelServicio() {
-  const camposIniciales = {
+export default function PanelFacturacion() {
+  const [formFactura, setFormFactura] = useState({
     cliente: "",
-    telefono: "",
-    direccion: "",
-    ciudad: "",
-    articulo: "",
-    marca: "",
-    modelo: "",
-    serie: "",
-    color: "",
-    estado: "",
-    falla: "",
-    tipo: "",
-    capacidad: "",
-    carga: "",
-    motor: "",
-    amperios: "",
-    unidad: "",
-    observacion: "",
+    cedula: "",
+    concepto: "",
     valor: "",
-    abono: "",
-    saldo: "",
-    diagnostico: ""
-  };
+    banco: "",
+    cuenta: "",
+    tipoCuenta: "",
+    titular: "",
+    observaciones: ""
+  });
 
-  const [formServicio, setFormServicio] = useState(camposIniciales);
-  const [servicios, setServicios] = useState([]);
-  const [consecutivoServicio, setConsecutivoServicio] = useState(1);
-  const [servicioEditandoId, setServicioEditandoId] = useState(null);
-  const servicioRef = useRef();
-  const firmaRef = useRef();
-  const [servicioParaImprimir, setServicioParaImprimir] = useState(null);
-  const [verServiciosGuardados, setVerServiciosGuardados] = useState(false);
+  const [facturas, setFacturas] = useState([]);
+  const [consecutivoFactura, setConsecutivoFactura] = useState(1);
+  const [facturaEditandoId, setFacturaEditandoId] = useState(null);
+  const facturaRef = useRef();
+  const [facturaParaImprimir, setFacturaParaImprimir] = useState(null);
+  const [verFacturasGuardadas, setVerFacturasGuardadas] = useState(false);
+  const [detalleFactura, setDetalleFactura] = useState(null);
 
-  const guardarServicio = async () => {
-    const nuevo = {
-      ...formServicio,
-      tipo: "servicio",
+  const guardarFactura = async () => {
+    const nueva = {
+      ...formFactura,
+      tipo: "factura",
       timestamp: Timestamp.now()
     };
 
-    if (servicioEditandoId) {
-      const ref = doc(db, "registros", servicioEditandoId);
-      await updateDoc(ref, nuevo);
+    if (facturaEditandoId) {
+      const ref = doc(db, "registros", facturaEditandoId);
+      await updateDoc(ref, nueva);
     } else {
-      nuevo.consecutivo = consecutivoServicio;
-      await addDoc(collection(db, "registros"), nuevo);
-      setConsecutivoServicio((prev) => prev + 1);
+      nueva.consecutivo = consecutivoFactura;
+      await addDoc(collection(db, "registros"), nueva);
+      setConsecutivoFactura((prev) => prev + 1);
     }
 
-    setFormServicio(camposIniciales);
-    setServicioEditandoId(null);
+    setFormFactura({ cliente: "", cedula: "", concepto: "", valor: "", banco: "", cuenta: "", tipoCuenta: "", titular: "", observaciones: "" });
+    setFacturaEditandoId(null);
     obtenerRegistros();
   };
 
@@ -88,7 +74,8 @@ export default function PanelServicio() {
     const snapshot = await getDocs(collection(db, "registros"));
     const batch = snapshot.docs.map((docu) => deleteDoc(doc(db, "registros", docu.id)));
     await Promise.all(batch);
-    setServicios([]);
+    setFacturas([]);
+    setConsecutivoFactura(1);
   };
 
   const obtenerRegistros = async () => {
@@ -96,7 +83,7 @@ export default function PanelServicio() {
     const q = query(ref, orderBy("timestamp", "desc"));
     const snapshot = await getDocs(q);
     const data = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
-    setServicios(data.filter((d) => d.tipo === "servicio"));
+    setFacturas(data.filter((d) => d.tipo === "factura"));
   };
 
   useEffect(() => {
@@ -105,202 +92,116 @@ export default function PanelServicio() {
 
   const exportarPDF = async (ref, nombre, consecutivo) => {
     const input = ref.current;
+
     const canvas = await html2canvas(input, {
       scale: 2,
       scrollY: -window.scrollY
     });
+
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "pt", "a4");
     const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-    let position = 0;
-
-    while (position < imgHeight) {
-      pdf.addImage(imgData, "PNG", 0, position * -1, pdfWidth, imgHeight);
-      if (position + pageHeight < imgHeight) {
-        pdf.addPage();
-      }
-      position += pageHeight;
-    }
-
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
     pdf.save(`${nombre}-${consecutivo}.pdf`);
   };
 
-  const handleHistorialPrint = async (servicio) => {
-    setServicioParaImprimir(servicio);
-    await new Promise((res) => setTimeout(res, 0));
-    exportarPDF(servicioRef, "servicio", servicio.consecutivo);
-  };
-
-  const getValor = (campo) => servicioParaImprimir?.[campo] ?? formServicio[campo];
-
-  const renderDato = (etiqueta, campo) => (
-    <p><strong className="uppercase">{etiqueta}:</strong> {getValor(campo)}</p>
-  );
-
-  const estiloVistaPrevia = {
-    width: '100%',
-    maxWidth: '794px',
-    minHeight: window.innerWidth < 768 ? '600px' : '1123px',
-    margin: '0 auto',
-    transform: window.innerWidth < 768 ? 'scale(0.85)' : 'scale(1)',
-    transformOrigin: 'top center'
-  };
-
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-6">
-      {!verServiciosGuardados && (
+    <div className="max-w-6xl mx-auto p-4 space-y-10">
+      {verFacturasGuardadas ? (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {Object.entries(formServicio).map(([campo, valor]) => (
+          <h2 className="text-xl font-bold mb-4">Facturas Guardadas</h2>
+          {facturas.map((f) => (
+            <div key={f.id} className="border p-4 mt-2 rounded bg-white shadow-md">
+              <p><strong>Consecutivo:</strong> <button onClick={() => setDetalleFactura(f)} className="text-blue-600 underline hover:text-blue-800">{f.consecutivo}</button></p>
+              <p><strong>Cliente:</strong> {f.cliente}</p>
+              <p><strong>Concepto:</strong> {f.concepto}</p>
+              <p><strong>Fecha:</strong> {f.timestamp?.toDate().toLocaleString()}</p>
+              <div className="mt-2 space-x-2">
+                <button onClick={() => { setFacturaParaImprimir(f); setVerFacturasGuardadas(false); setFormFactura({ cliente: "", cedula: "", concepto: "", valor: "", banco: "", cuenta: "", tipoCuenta: "", titular: "", observaciones: "" }); setFacturaEditandoId(null); }} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm">Imprimir</button>
+                <button onClick={() => { setFormFactura(f); setFacturaEditandoId(f.id); setFacturaParaImprimir(null); setVerFacturasGuardadas(false); }} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">Editar</button>
+                <button onClick={async () => { await deleteDoc(doc(db, "registros", f.id)); obtenerRegistros(); }} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">Eliminar</button>
+              </div>
+            </div>
+          ))}
+
+          <div className="mt-6 space-x-2">
+            <button onClick={() => setVerFacturasGuardadas(false)} className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded shadow">Volver al Inicio</button>
+            <button onClick={eliminarHistorial} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded shadow">Eliminar Historial</button>
+          </div>
+
+          {detalleFactura && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded shadow-lg max-h-[90vh] overflow-auto w-full max-w-2xl">
+                <h3 className="text-xl font-bold mb-4">Detalle Cuenta de Cobro #{detalleFactura.consecutivo}</h3>
+                <table className="w-full border border-black mb-4">
+                  <tbody>
+                    {Object.entries(detalleFactura).map(([campo, valor], i) => (
+                      campo !== "id" && campo !== "tipo" && (
+                        <tr key={i}>
+                          <td className="border p-1 font-bold w-1/3">{campo.charAt(0).toUpperCase() + campo.slice(1)}:</td>
+                          <td className="border p-1">{valor?.toString()}</td>
+                        </tr>
+                      )
+                    ))}
+                  </tbody>
+                </table>
+                <div className="text-right space-x-2">
+                  <button onClick={() => exportarPDF(facturaRef, 'factura', detalleFactura.consecutivo)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded shadow">Imprimir</button>
+                  <button onClick={() => setDetalleFactura(null)} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded shadow">Cerrar</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(formFactura).map(([campo, valor]) => (
               <input
                 key={campo}
                 placeholder={campo.charAt(0).toUpperCase() + campo.slice(1)}
-                className="w-full border p-2 rounded text-sm"
+                className="w-full border p-2 rounded"
                 value={valor}
-                onChange={(e) => setFormServicio({ ...formServicio, [campo]: e.target.value })}
+                onChange={(e) => setFormFactura({ ...formFactura, [campo]: e.target.value })}
               />
             ))}
           </div>
 
-          <div ref={servicioRef} className="p-8 bg-white shadow border mt-4 text-sm print:block print:p-0" style={estiloVistaPrevia}>
-            <div className="text-center">
-              <img src="/logo.png" alt="Logo" style={{ height: "90px", margin: "0 auto" }} />
-              <h1 className="text-2xl font-bold mt-2">Formato Técnico de Servicio</h1>
-              <p className="mt-2"><strong>Consecutivo:</strong> {getValor("consecutivo")}</p>
-              <p><strong>Fecha:</strong> {new Date().toLocaleString()}</p>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              <h2 className="font-bold">📌 Información del Cliente</h2>
-              {renderDato("Cliente", "cliente")}
-              {renderDato("Teléfono", "telefono")}
-              {renderDato("Dirección", "direccion")}
-              {renderDato("Ciudad", "ciudad")}
-
-              <h2 className="font-bold mt-4">📦 Datos del Artículo</h2>
-              {renderDato("Artículo", "articulo")}
-              {renderDato("Marca", "marca")}
-              {renderDato("Modelo", "modelo")}
-              {renderDato("Serie", "serie")}
-              {renderDato("Color", "color")}
-              {renderDato("Estado", "estado")}
-              {renderDato("Falla", "falla")}
-
-              <h2 className="font-bold mt-4">❄️ Especificaciones Técnicas</h2>
-              {renderDato("Motor", "motor")}
-              {renderDato("Amperios", "amperios")}
-              {renderDato("Unidad", "unidad")}
-              {renderDato("Capacidad", "capacidad")}
-              {renderDato("Tipo", "tipo")}
-              {renderDato("Carga", "carga")}
-
-              <h2 className="font-bold mt-4">💲 Valores</h2>
-              {renderDato("Valor", "valor")}
-              {renderDato("Abono", "abono")}
-              {renderDato("Saldo", "saldo")}
-
-              <h2 className="font-bold uppercase mt-4">Diagnóstico:</h2>
-              <p>{getValor("diagnostico")}</p>
-
-              <h2 className="font-bold uppercase mt-4">Observación:</h2>
-              <p>{getValor("observacion")}</p>
-
-              <div className="mt-6">
-                <h2 className="font-bold">Firma del Cliente</h2>
-                <div className="border-b border-black w-64 mt-6" ref={firmaRef} style={{ height: '3rem' }}></div>
-              </div>
-
-              <div className="mt-10 print:block text-sm text-center">
-                <p><strong>Héctor Maya</strong> - MZ 12 CS 13 Barrio las Violetas - Dosquebradas/RDA</p>
-                <p>TELEFONOS: 320 408 3173 - 311 384 9609</p>
-                <p>CORREO: reparacionlavadorashector@gmail.com</p>
-              </div>
-
-              <div className="mt-4 space-x-2">
-                <button onClick={() => setVerServiciosGuardados(true)} className="bg-blue-500 text-white px-4 py-2 rounded">
-                  Ver Servicios Guardados
-                </button>
-                <button onClick={() => window.location.href = "/"} className="bg-yellow-500 text-white px-4 py-2 rounded">
-                  Ir al Inicio
-                </button>
-              </div>
-            </div>
+          <div ref={facturaRef} className="p-6 bg-white shadow border mt-4 text-center" style={{ width: '794px', minHeight: '1123px', margin: '0 auto' }}>
+            <img src="/logo.png" alt="Logo" style={{ height: "160px", width: "auto", marginBottom: "1rem" }} />
+            <h1 className="text-2xl font-bold mb-4">CUENTA DE COBRO</h1>
+            <p className="mb-1 font-semibold">Héctor Maya</p>
+            <p className="mb-4 font-semibold">C.C. 9.969.799 de Anserma Caldas</p>
+            <p><strong>No:</strong> {facturaParaImprimir?.consecutivo ?? consecutivoFactura}</p>
+            <p><strong>Fecha:</strong> {new Date().toLocaleDateString()}</p>
+            <br />
+            <p><strong>Cliente:</strong> {facturaParaImprimir?.cliente ?? formFactura.cliente}</p>
+            <p><strong>Cédula:</strong> {facturaParaImprimir?.cedula ?? formFactura.cedula}</p>
+            <p><strong>Concepto:</strong> {facturaParaImprimir?.concepto ?? formFactura.concepto}</p>
+            <p><strong>Valor:</strong> ${facturaParaImprimir?.valor ?? formFactura.valor}</p>
+            <br />
+            <p><strong>Favor realizar el pago a:</strong></p>
+            <p>Banco: {facturaParaImprimir?.banco ?? formFactura.banco} | Cuenta: {facturaParaImprimir?.cuenta ?? formFactura.cuenta} ({facturaParaImprimir?.tipoCuenta ?? formFactura.tipoCuenta})</p>
+            <p>Titular: {facturaParaImprimir?.titular ?? formFactura.titular}</p>
+            <br />
+            <p><strong>Observaciones:</strong> {facturaParaImprimir?.observaciones ?? formFactura.observaciones}</p>
+            <br />
+            <p className="mt-6">Firma: _____________________________</p>
           </div>
 
           <div className="space-x-2 mt-4">
-            <button onClick={guardarServicio} className="bg-green-600 text-white px-4 py-2 rounded">
-              Guardar Servicio
-            </button>
-            <button onClick={() => exportarPDF(servicioRef, "servicio", consecutivoServicio)} className="bg-gray-800 text-white px-4 py-2 rounded">
-              Imprimir PDF Servicio
-            </button>
+            <button onClick={guardarFactura} className="bg-green-600 text-white px-4 py-2 rounded">Guardar Cuenta de Cobro</button>
+            <button onClick={() => exportarPDF(facturaRef, "factura", facturaParaImprimir?.consecutivo ?? consecutivoFactura)} className="bg-gray-800 text-white px-4 py-2 rounded">Imprimir PDF Cuenta de Cobro</button>
+            <button onClick={() => setVerFacturasGuardadas(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Facturas Guardadas</button>
           </div>
         </>
       )}
 
-      {verServiciosGuardados && (
-        <div className="mt-10">
-          <h2 className="text-xl font-bold mb-4">Servicios Guardados</h2>
-          {servicios.length === 0 ? (
-            <p className="text-gray-600">No hay servicios registrados.</p>
-          ) : (
-            servicios.map((s) => (
-              <div key={s.id} className="border p-4 mt-2 rounded bg-white shadow-md">
-                <p>
-                  <strong>Consecutivo:</strong>{" "}
-                  <button
-                    onClick={() => {
-                      setServicioParaImprimir(s);
-                      setVerServiciosGuardados(false);
-                    }}
-                    className="text-blue-600 underline hover:text-blue-800"
-                  >
-                    {s.consecutivo}
-                  </button>
-                </p>
-                <p><strong>Cliente:</strong> {s.cliente}</p>
-                <p><strong>Artículo:</strong> {s.articulo}</p>
-                <p><strong>Fecha:</strong> {s.timestamp?.toDate().toLocaleString()}</p>
-
-                <div className="mt-2 space-x-2">
-                  <button
-                    onClick={() => {
-                      setFormServicio(s);
-                      setServicioEditandoId(s.id);
-                      setServicioParaImprimir(null);
-                      setVerServiciosGuardados(false);
-                    }}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await deleteDoc(doc(db, "registros", s.id));
-                      obtenerRegistros();
-                    }}
-                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-
-          <div className="mt-6 space-x-2">
-            <button onClick={() => setVerServiciosGuardados(false)} className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded shadow">
-              Volver al Inicio
-            </button>
-            <button onClick={eliminarHistorial} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded shadow">
-              Eliminar Historial
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="mt-10">
+        <button onClick={() => (window.location.href = "/")} className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded shadow">Volver al Inicio</button>
+      </div>
     </div>
   );
 }
