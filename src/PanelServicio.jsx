@@ -62,7 +62,6 @@ export default function PanelServicio() {
   const firmaRef = useRef();
   const [servicioParaImprimir, setServicioParaImprimir] = useState(null);
   const [verServiciosGuardados, setVerServiciosGuardados] = useState(false);
-  const [firma, setFirma] = useState(null);
 
   const guardarServicio = async () => {
     const nuevo = {
@@ -84,6 +83,8 @@ export default function PanelServicio() {
     setServicioEditandoId(null);
     obtenerRegistros();
   };
+    
+    
 
   const eliminarHistorial = async () => {
     const snapshot = await getDocs(collection(db, "registros"));
@@ -106,12 +107,14 @@ export default function PanelServicio() {
 
   const exportarPDF = async (ref, nombre, consecutivo) => {
     const input = ref.current;
-    const canvas = await html2canvas(input);
+    const canvas = await html2canvas(input, {
+      scale: 2,
+      scrollY: -window.scrollY
+    });
     const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF();
-    const imgProps = pdf.getImageProperties(imgData);
+    const pdf = new jsPDF("p", "pt", "a4");
     const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
     pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
     pdf.save(`${nombre}-${consecutivo}.pdf`);
   };
@@ -144,7 +147,7 @@ export default function PanelServicio() {
             ))}
           </div>
 
-          <div ref={servicioRef} className="p-8 bg-white shadow border mt-4 text-sm print:block print:p-0">
+          <div ref={servicioRef} className="p-8 bg-white shadow border mt-4 text-sm print:block print:p-0" style={{ width: '794px', minHeight: '1123px', margin: '0 auto' }}>
             <div className="text-center">
               <img src="/logo.png" alt="Logo" style={{ height: "90px", margin: "0 auto" }} />
               <h1 className="text-2xl font-bold mt-2">Formato Técnico de Servicio</h1>

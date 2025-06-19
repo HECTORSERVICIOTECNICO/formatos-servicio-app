@@ -92,12 +92,17 @@ export default function PanelFacturacion() {
 
   const exportarPDF = async (ref, nombre, consecutivo) => {
     const input = ref.current;
-    const canvas = await html2canvas(input);
+
+    const canvas = await html2canvas(input, {
+      scale: 2,
+      scrollY: -window.scrollY
+    });
+
     const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF();
-    const imgProps = pdf.getImageProperties(imgData);
+    const pdf = new jsPDF("p", "pt", "a4");
     const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
     pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
     pdf.save(`${nombre}-${consecutivo}.pdf`);
   };
@@ -164,7 +169,7 @@ export default function PanelFacturacion() {
             ))}
           </div>
 
-          <div ref={facturaRef} className="p-6 bg-white shadow border mt-4 text-center">
+          <div ref={facturaRef} className="p-6 bg-white shadow border mt-4 text-center" style={{ width: '794px', minHeight: '1123px', margin: '0 auto' }}>
             <img src="/logo.png" alt="Logo" style={{ height: "160px", width: "auto", marginBottom: "1rem" }} />
             <h1 className="text-2xl font-bold mb-4">CUENTA DE COBRO</h1>
             <p className="mb-1 font-semibold">Héctor Maya</p>
