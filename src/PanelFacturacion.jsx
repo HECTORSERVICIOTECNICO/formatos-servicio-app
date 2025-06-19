@@ -48,6 +48,16 @@ export default function PanelFacturacion() {
   const [facturaParaImprimir, setFacturaParaImprimir] = useState(null);
   const [verFacturasGuardadas, setVerFacturasGuardadas] = useState(false);
   const [detalleFactura, setDetalleFactura] = useState(null);
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsSmallScreen(window.innerWidth < 768);
+    };
+    checkScreenSize();
+    window.addEventListener("resize", checkScreenSize);
+    return () => window.removeEventListener("resize", checkScreenSize);
+  }, []);
 
   const guardarFactura = async () => {
     const nueva = {
@@ -92,17 +102,14 @@ export default function PanelFacturacion() {
 
   const exportarPDF = async (ref, nombre, consecutivo) => {
     const input = ref.current;
-
     const canvas = await html2canvas(input, {
       scale: 2,
       scrollY: -window.scrollY
     });
-
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "pt", "a4");
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
     pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
     pdf.save(`${nombre}-${consecutivo}.pdf`);
   };
@@ -169,7 +176,17 @@ export default function PanelFacturacion() {
             ))}
           </div>
 
-          <div ref={facturaRef} className="p-6 bg-white shadow border mt-4 text-center" style={{ width: '794px', minHeight: '1123px', margin: '0 auto' }}>
+          <div
+            ref={facturaRef}
+            className="p-6 bg-white shadow border mt-4 text-center"
+            style={{
+              width: '794px',
+              minHeight: isSmallScreen ? '600px' : '1123px',
+              margin: '0 auto',
+              transform: isSmallScreen ? 'scale(0.85)' : 'scale(1)',
+              transformOrigin: 'top center'
+            }}
+          >
             <img src="/logo.png" alt="Logo" style={{ height: "160px", width: "auto", marginBottom: "1rem" }} />
             <h1 className="text-2xl font-bold mb-4">CUENTA DE COBRO</h1>
             <p className="mb-1 font-semibold">Héctor Maya</p>
