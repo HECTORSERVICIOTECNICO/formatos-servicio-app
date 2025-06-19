@@ -92,14 +92,17 @@ export default function PanelFacturacion() {
 
   const exportarPDF = async (ref, nombre, consecutivo) => {
     const input = ref.current;
+
     const canvas = await html2canvas(input, {
       scale: 2,
       scrollY: -window.scrollY
     });
+
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "pt", "a4");
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
     pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
     pdf.save(`${nombre}-${consecutivo}.pdf`);
   };
@@ -144,39 +147,84 @@ export default function PanelFacturacion() {
                     ))}
                   </tbody>
                 </table>
-                <div className="text-right space-x-2">
-                  <button onClick={() => exportarPDF(facturaRef, 'factura', detalleFactura.consecutivo)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded shadow">Imprimir</button>
-                  <button onClick={() => setDetalleFactura(null)} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded shadow">Cerrar</button>
-                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+  <button
+    onClick={guardarFactura}
+    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow"
+  >
+    Guardar Cuenta de Cobro
+  </button>
+  <button
+    onClick={() =>
+      exportarPDF(
+        facturaRef,
+        "factura",
+        facturaParaImprimir?.consecutivo ?? consecutivoFactura
+      )
+    }
+    className="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded shadow"
+  >
+    Imprimir PDF Cuenta de Cobro
+  </button>
+  <button
+    onClick={() => setVerFacturasGuardadas(true)}
+    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow"
+  >
+    Facturas Guardadas
+  </button>
+</div>
+
               </div>
             </div>
           )}
         </>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {Object.entries(formFactura).map(([campo, valor]) => (
               <input
                 key={campo}
                 placeholder={campo.charAt(0).toUpperCase() + campo.slice(1)}
-                className="w-full border p-2 rounded text-sm"
+                className="w-full border p-2 rounded"
                 value={valor}
                 onChange={(e) => setFormFactura({ ...formFactura, [campo]: e.target.value })}
               />
             ))}
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button onClick={guardarFactura} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow">Guardar Cuenta de Cobro</button>
-            <button onClick={() => exportarPDF(facturaRef, "factura", facturaParaImprimir?.consecutivo ?? consecutivoFactura)} className="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded shadow">Imprimir PDF Cuenta de Cobro</button>
-            <button onClick={() => setVerFacturasGuardadas(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow">Facturas Guardadas</button>
+          <div ref={facturaRef} className="p-6 bg-white shadow border mt-4 text-center" style={{ width: '794px', minHeight: '1123px', margin: '0 auto' }}>
+            <img src="/logo.png" alt="Logo" style={{ height: "160px", width: "auto", marginBottom: "1rem" }} />
+            <h1 className="text-2xl font-bold mb-4">CUENTA DE COBRO</h1>
+            <p className="mb-1 font-semibold">Héctor Maya</p>
+            <p className="mb-4 font-semibold">C.C. 9.969.799 de Anserma Caldas</p>
+            <p><strong>No:</strong> {facturaParaImprimir?.consecutivo ?? consecutivoFactura}</p>
+            <p><strong>Fecha:</strong> {new Date().toLocaleDateString()}</p>
+            <br />
+            <p><strong>Cliente:</strong> {facturaParaImprimir?.cliente ?? formFactura.cliente}</p>
+            <p><strong>Cédula:</strong> {facturaParaImprimir?.cedula ?? formFactura.cedula}</p>
+            <p><strong>Concepto:</strong> {facturaParaImprimir?.concepto ?? formFactura.concepto}</p>
+            <p><strong>Valor:</strong> ${facturaParaImprimir?.valor ?? formFactura.valor}</p>
+            <br />
+            <p><strong>Favor realizar el pago a:</strong></p>
+            <p>Banco: {facturaParaImprimir?.banco ?? formFactura.banco} | Cuenta: {facturaParaImprimir?.cuenta ?? formFactura.cuenta} ({facturaParaImprimir?.tipoCuenta ?? formFactura.tipoCuenta})</p>
+            <p>Titular: {facturaParaImprimir?.titular ?? formFactura.titular}</p>
+            <br />
+            <p><strong>Observaciones:</strong> {facturaParaImprimir?.observaciones ?? formFactura.observaciones}</p>
+            <br />
+            <p className="mt-6">Firma: _____________________________</p>
           </div>
 
-          <div className="mt-10">
-            <button onClick={() => (window.location.href = "/")} className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded shadow">Volver al Inicio</button>
+          <div className="space-x-2 mt-4">
+            <button onClick={guardarFactura} className="bg-green-600 text-white px-4 py-2 rounded">Guardar Cuenta de Cobro</button>
+            <button onClick={() => exportarPDF(facturaRef, "factura", facturaParaImprimir?.consecutivo ?? consecutivoFactura)} className="bg-gray-800 text-white px-4 py-2 rounded">Imprimir PDF Cuenta de Cobro</button>
+            <button onClick={() => setVerFacturasGuardadas(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Facturas Guardadas</button>
           </div>
         </>
       )}
+
+      <div className="mt-10">
+        <button onClick={() => (window.location.href = "/")} className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded shadow">Volver al Inicio</button>
+      </div>
     </div>
   );
 }
