@@ -166,10 +166,10 @@ export default function PanelFacturacion() {
             ))}
           </div>
 
-          <div className="space-x-2 mt-4">
-            <button onClick={guardarFactura} className="bg-green-600 text-white px-4 py-2 rounded">Guardar Cuenta de Cobro</button>
-            <button onClick={() => exportarPDF(facturaRef, "factura", facturaParaImprimir?.consecutivo ?? consecutivoFactura)} className="bg-gray-800 text-white px-4 py-2 rounded">Imprimir PDF Cuenta de Cobro</button>
-            <button onClick={() => setVerFacturasGuardadas(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Facturas Guardadas</button>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button onClick={guardarFactura} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow">Guardar Cuenta de Cobro</button>
+            <button onClick={() => exportarPDF(facturaRef, "factura", facturaParaImprimir?.consecutivo ?? consecutivoFactura)} className="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded shadow">Imprimir PDF Cuenta de Cobro</button>
+            <button onClick={() => setVerFacturasGuardadas(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow">Facturas Guardadas</button>
           </div>
 
           <div className="mt-10">
