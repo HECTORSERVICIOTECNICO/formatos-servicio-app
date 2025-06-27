@@ -197,6 +197,9 @@ export default function PanelServicio() {
               {renderDato("Tipo", "tipo")}
               {renderDato("Carga", "carga")}
 
+              {/* Espaciador para evitar salto incómodo */}
+              <div style={{ height: '40px' }}></div>
+
               <h2 className="font-bold mt-4">💲 Valores</h2>
               {renderDato("Valor", "valor")}
               {renderDato("Abono", "abono")}
@@ -214,9 +217,9 @@ export default function PanelServicio() {
               </div>
 
               <div className="mt-10 print:block text-sm text-center">
-                <p><strong>Héctor Maya</strong> - MZ 12 CS 13 Barrio las Violetas - Dosquebradas/RDA</p>
+                <p><strong>Héctor Maya</strong> - Dosquebradas/RDA</p>
                 <p>TELEFONOS: 320 408 3173 - 311 384 9609</p>
-                <p>CORREO: reparacionlavadorashector@gmail.com</p>
+                <p>CORREO:hectormaya712@gmail.com maya1538@hotmail.es</p>
               </div>
 
               <div className="mt-4 space-x-2">
